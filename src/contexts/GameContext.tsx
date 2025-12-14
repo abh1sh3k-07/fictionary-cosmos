@@ -3,7 +3,6 @@ import React, { useState, createContext, useContext } from 'react';
 export interface User {
   name: string;
   score: number;
-  powercards: string[];
 }
 
 export interface Question {
@@ -21,8 +20,15 @@ export interface Powercard {
   name: string;
   type: 'Genre' | 'Language' | 'Country' | 'Year' | 'Universe';
   cost: number;
-  hint: string;
-  unlocked: boolean;
+  getHint: (questionId: number) => string;
+}
+
+export interface OwnedPowercard {
+  id: string;
+  powercardId: string;
+  purchasedAt: number;
+  used: boolean;
+  usedOnQuestion?: number;
 }
 
 export interface LeaderboardEntry {
@@ -39,12 +45,55 @@ interface GameContextType {
   setCurrentQuestionIndex: (index: number) => void;
   questions: Question[];
   powercards: Powercard[];
+  ownedPowercards: OwnedPowercard[];
   leaderboard: LeaderboardEntry[];
-  unlockPowercard: (id: string) => void;
+  buyPowercard: (id: string) => boolean;
+  usePowercard: (ownedId: string, questionIndex: number) => string | null;
   answerQuestion: (isCorrect: boolean) => void;
   isRegistered: boolean;
   registerUser: (name: string) => void;
+  isQuizComplete: boolean;
+  setQuizComplete: (complete: boolean) => void;
 }
+
+// Question-specific hints for each powercard type
+const questionHints: Record<number, Record<string, string>> = {
+  1: {
+    Genre: 'Science Fiction / Heist Thriller',
+    Language: 'English',
+    Country: 'United States / United Kingdom',
+    Year: '2010',
+    Universe: 'Standalone film by Christopher Nolan',
+  },
+  2: {
+    Genre: 'Psychological Thriller / Supernatural',
+    Language: 'Japanese (with English dub available)',
+    Country: 'Japan',
+    Year: '2006-2007',
+    Universe: 'Death Note universe by Tsugumi Ohba',
+  },
+  3: {
+    Genre: 'Science Fiction / Horror / Drama',
+    Language: 'English',
+    Country: 'United States',
+    Year: '2016-present',
+    Universe: 'Stranger Things universe by the Duffer Brothers',
+  },
+  4: {
+    Genre: 'Science Fiction / Comedy',
+    Language: 'English',
+    Country: 'United Kingdom',
+    Year: '1979 (first book)',
+    Universe: 'The Hitchhiker\'s Guide to the Galaxy series',
+  },
+  5: {
+    Genre: 'Science Fiction / Epic / Political',
+    Language: 'English',
+    Country: 'United States',
+    Year: '1965 (book), 2021 (latest film)',
+    Universe: 'Dune universe by Frank Herbert',
+  },
+};
 
 const mockQuestions: Question[] = [
   {
@@ -95,12 +144,41 @@ const mockQuestions: Question[] = [
 ];
 
 const mockPowercards: Powercard[] = [
-  { id: 'genre1', name: 'Genre Reveal', type: 'Genre', cost: 100, hint: 'Science Fiction Thriller', unlocked: false },
-  { id: 'lang1', name: 'Language Oracle', type: 'Language', cost: 100, hint: 'Originally in English', unlocked: false },
-  { id: 'country1', name: 'Origin Finder', type: 'Country', cost: 100, hint: 'United States / Japan', unlocked: false },
-  { id: 'year1', name: 'Time Crystal', type: 'Year', cost: 100, hint: 'Released between 2010-2020', unlocked: false },
-  { id: 'universe1', name: 'Universe Key', type: 'Universe', cost: 100, hint: 'Part of a larger franchise', unlocked: false },
-  { id: 'genre2', name: 'Genre Reveal II', type: 'Genre', cost: 100, hint: 'Psychological Horror', unlocked: false },
+  { 
+    id: 'genre', 
+    name: 'Genre Reveal', 
+    type: 'Genre', 
+    cost: 100, 
+    getHint: (qId) => questionHints[qId]?.Genre || 'Genre hint unavailable'
+  },
+  { 
+    id: 'language', 
+    name: 'Language Oracle', 
+    type: 'Language', 
+    cost: 100, 
+    getHint: (qId) => questionHints[qId]?.Language || 'Language hint unavailable'
+  },
+  { 
+    id: 'country', 
+    name: 'Origin Finder', 
+    type: 'Country', 
+    cost: 100, 
+    getHint: (qId) => questionHints[qId]?.Country || 'Country hint unavailable'
+  },
+  { 
+    id: 'year', 
+    name: 'Time Crystal', 
+    type: 'Year', 
+    cost: 100, 
+    getHint: (qId) => questionHints[qId]?.Year || 'Year hint unavailable'
+  },
+  { 
+    id: 'universe', 
+    name: 'Universe Key', 
+    type: 'Universe', 
+    cost: 100, 
+    getHint: (qId) => questionHints[qId]?.Universe || 'Universe hint unavailable'
+  },
 ];
 
 const mockLeaderboard: LeaderboardEntry[] = [
@@ -121,15 +199,15 @@ const GameContext = createContext<GameContextType | undefined>(undefined);
 export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [powercards, setPowercards] = useState(mockPowercards);
+  const [ownedPowercards, setOwnedPowercards] = useState<OwnedPowercard[]>([]);
   const [leaderboard, setLeaderboard] = useState(mockLeaderboard);
   const [isRegistered, setIsRegistered] = useState(false);
+  const [isQuizComplete, setQuizComplete] = useState(false);
 
   const registerUser = (name: string) => {
     const newUser: User = {
       name,
       score: 0,
-      powercards: [],
     };
     setUser(newUser);
     setIsRegistered(true);
@@ -141,14 +219,21 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   };
 
-  const unlockPowercard = (id: string) => {
-    const card = powercards.find(c => c.id === id);
-    if (!user || !card || user.score < card.cost) return;
+  const buyPowercard = (id: string): boolean => {
+    const card = mockPowercards.find(c => c.id === id);
+    if (!user || !card || user.score < card.cost) return false;
     
+    // Deduct points
     setUser((prev) => prev ? { ...prev, score: prev.score - card.cost } : null);
-    setPowercards((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, unlocked: true } : c))
-    );
+    
+    // Add owned powercard
+    const newOwned: OwnedPowercard = {
+      id: `${id}_${Date.now()}`,
+      powercardId: id,
+      purchasedAt: Date.now(),
+      used: false,
+    };
+    setOwnedPowercards((prev) => [...prev, newOwned]);
     
     // Update leaderboard
     setLeaderboard((prev) => {
@@ -157,6 +242,28 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       );
       return updated.sort((a, b) => b.score - a.score).map((entry, idx) => ({ ...entry, rank: idx + 1 }));
     });
+    
+    return true;
+  };
+
+  const usePowercard = (ownedId: string, questionIndex: number): string | null => {
+    const owned = ownedPowercards.find(o => o.id === ownedId && !o.used);
+    if (!owned) return null;
+    
+    const card = mockPowercards.find(c => c.id === owned.powercardId);
+    if (!card) return null;
+    
+    const questionId = mockQuestions[questionIndex]?.id;
+    if (!questionId) return null;
+    
+    // Mark as used
+    setOwnedPowercards((prev) =>
+      prev.map((o) =>
+        o.id === ownedId ? { ...o, used: true, usedOnQuestion: questionIndex } : o
+      )
+    );
+    
+    return card.getHint(questionId);
   };
 
   const answerQuestion = (isCorrect: boolean) => {
@@ -184,12 +291,16 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         currentQuestionIndex,
         setCurrentQuestionIndex,
         questions: mockQuestions,
-        powercards,
+        powercards: mockPowercards,
+        ownedPowercards,
         leaderboard,
-        unlockPowercard,
+        buyPowercard,
+        usePowercard,
         answerQuestion,
         isRegistered,
         registerUser,
+        isQuizComplete,
+        setQuizComplete,
       }}
     >
       {children}

@@ -1,33 +1,45 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGame } from '@/contexts/GameContext';
-import { Lightbulb, ChevronRight, Check, X, Sparkles } from 'lucide-react';
+import { Lightbulb, ChevronRight, Check, X, Sparkles, Zap } from 'lucide-react';
 import { toast } from 'sonner';
-
-const categoryColors: Record<string, string> = {
-  'Movies': 'from-primary to-violet',
-  'Anime': 'from-accent to-violet',
-  'Web Series': 'from-violet to-primary',
-  'Fiction Books': 'from-primary to-accent',
-  'Fantasy / Sci-Fi': 'from-violet to-accent',
-};
+import { useSoundEffects } from '@/hooks/useSoundEffects';
+import HintTimerBar from './HintTimerBar';
 
 const QuestionsPage: React.FC = () => {
-  const { questions, currentQuestionIndex, setCurrentQuestionIndex, answerQuestion, user } = useGame();
+  const { 
+    questions, 
+    currentQuestionIndex, 
+    setCurrentQuestionIndex, 
+    answerQuestion, 
+    user,
+    ownedPowercards,
+    usePowercard,
+    setQuizComplete
+  } = useGame();
+  
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
   const [showHint, setShowHint] = useState(false);
   const [timeElapsed, setTimeElapsed] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [revealedPowercardHints, setRevealedPowercardHints] = useState<{ type: string; hint: string }[]>([]);
+  const [usingPowercard, setUsingPowercard] = useState<string | null>(null);
+  
+  const { playCorrectAnswer, playWrongAnswer, playTransition, playPowercardUse } = useSoundEffects();
 
   const currentQuestion = questions[currentQuestionIndex];
   const hintDelay = 180; // 3 minutes in seconds
+  
+  // Filter unused owned powercards
+  const availablePowercards = ownedPowercards.filter(op => !op.used);
 
   useEffect(() => {
     setTimeElapsed(0);
     setShowHint(false);
     setSelectedAnswer(null);
     setIsAnswered(false);
+    setRevealedPowercardHints([]);
   }, [currentQuestionIndex]);
 
   useEffect(() => {
@@ -43,6 +55,30 @@ const QuestionsPage: React.FC = () => {
     return () => clearInterval(timer);
   }, [currentQuestionIndex, showHint]);
 
+  const handleUsePowercard = (ownedId: string, powercardId: string) => {
+    setUsingPowercard(ownedId);
+    playPowercardUse();
+    
+    setTimeout(() => {
+      const hint = usePowercard(ownedId, currentQuestionIndex);
+      const card = ownedPowercards.find(o => o.id === ownedId);
+      
+      if (hint && card) {
+        // Get the powercard type from the base powercard
+        const baseCard = { genre: 'Genre', language: 'Language', country: 'Country', year: 'Year', universe: 'Universe' };
+        const type = baseCard[card.powercardId as keyof typeof baseCard] || 'Hint';
+        
+        setRevealedPowercardHints(prev => [...prev, { type, hint }]);
+        toast.success('Powercard Used!', {
+          description: `${type} revealed!`,
+          icon: <Zap className="w-5 h-5 text-accent" />,
+        });
+      }
+      
+      setUsingPowercard(null);
+    }, 600);
+  };
+
   const handleAnswerSelect = (index: number) => {
     if (isAnswered) return;
     
@@ -53,11 +89,13 @@ const QuestionsPage: React.FC = () => {
     answerQuestion(isCorrect);
     
     if (isCorrect) {
+      playCorrectAnswer();
       toast.success(`+${currentQuestion.points} points!`, {
         description: 'Correct answer! Well done, traveler.',
         icon: <Sparkles className="w-5 h-5 text-primary" />,
       });
     } else {
+      playWrongAnswer();
       toast.error('Incorrect!', {
         description: 'The multiverse has other plans...',
       });
@@ -66,12 +104,11 @@ const QuestionsPage: React.FC = () => {
 
   const handleNextQuestion = () => {
     if (currentQuestionIndex >= questions.length - 1) {
-      toast.info('Quiz Complete!', {
-        description: `Final score: ${user?.score || 0} points`,
-      });
+      setQuizComplete(true);
       return;
     }
     
+    playTransition();
     setIsTransitioning(true);
     
     setTimeout(() => {
@@ -99,65 +136,90 @@ const QuestionsPage: React.FC = () => {
           >
             {/* Galaxy warp transition */}
             <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
-              {/* Radiating galaxy rings */}
-              {[...Array(5)].map((_, i) => (
+              {/* Spiral galaxy arms */}
+              {[...Array(4)].map((_, arm) => (
                 <motion.div
-                  key={i}
-                  className="absolute rounded-full border-2 border-primary/40"
+                  key={`arm-${arm}`}
+                  className="absolute"
                   style={{
-                    width: 100 + i * 80,
-                    height: 100 + i * 80,
+                    width: '100%',
+                    height: '100%',
                   }}
-                  initial={{ scale: 0, opacity: 1, rotate: 0 }}
+                  initial={{ rotate: arm * 90, scale: 0 }}
                   animate={{ 
-                    scale: [0, 2, 3],
-                    opacity: [0.8, 0.4, 0],
-                    rotate: [0, 90, 180]
+                    rotate: [arm * 90, arm * 90 + 180],
+                    scale: [0, 2],
+                    opacity: [0.8, 0]
                   }}
-                  transition={{ 
-                    duration: 0.8,
-                    delay: i * 0.1,
-                    ease: 'easeOut'
-                  }}
-                />
+                  transition={{ duration: 0.8, ease: 'easeOut' }}
+                >
+                  {[...Array(15)].map((_, i) => (
+                    <motion.div
+                      key={i}
+                      className="absolute rounded-full"
+                      style={{
+                        width: 4 + i * 2,
+                        height: 4 + i * 2,
+                        left: '50%',
+                        top: '50%',
+                        background: `radial-gradient(circle, hsl(var(--primary)), hsl(var(--violet)))`,
+                        transform: `translate(-50%, -50%) rotate(${i * 15}deg) translateY(${-20 - i * 15}px)`,
+                      }}
+                      initial={{ opacity: 0.8, scale: 1 }}
+                      animate={{ opacity: 0, scale: 0.5 }}
+                      transition={{ duration: 0.6, delay: i * 0.03 }}
+                    />
+                  ))}
+                </motion.div>
               ))}
               
-              {/* Central galaxy core */}
+              {/* Central bright core */}
               <motion.div
-                className="absolute w-32 h-32 rounded-full"
+                className="absolute w-40 h-40 rounded-full"
                 style={{
-                  background: 'radial-gradient(circle, hsl(var(--primary)) 0%, hsl(var(--violet)) 50%, transparent 70%)',
+                  background: 'radial-gradient(circle, hsl(var(--primary)) 0%, hsl(var(--violet)) 40%, hsl(var(--accent)) 70%, transparent 100%)',
                 }}
                 initial={{ scale: 0, opacity: 0 }}
                 animate={{ 
-                  scale: [0, 1.5, 0],
-                  opacity: [0, 1, 0]
+                  scale: [0, 1.5, 3, 0],
+                  opacity: [0, 1, 0.8, 0]
                 }}
                 transition={{ duration: 0.8 }}
               />
               
-              {/* Star particles */}
-              {[...Array(20)].map((_, i) => (
+              {/* Distant galaxy particles */}
+              {[...Array(30)].map((_, i) => (
                 <motion.div
-                  key={`star-${i}`}
-                  className="absolute w-1 h-1 rounded-full bg-foreground"
+                  key={`particle-${i}`}
+                  className="absolute w-1 h-1 rounded-full"
                   style={{
+                    background: i % 3 === 0 ? 'hsl(var(--primary))' : i % 3 === 1 ? 'hsl(var(--violet))' : 'hsl(var(--accent))',
                     left: '50%',
                     top: '50%',
                   }}
-                  initial={{ x: 0, y: 0, opacity: 1 }}
+                  initial={{ x: 0, y: 0, opacity: 1, scale: 1 }}
                   animate={{ 
-                    x: Math.cos(i * 18 * Math.PI / 180) * 300,
-                    y: Math.sin(i * 18 * Math.PI / 180) * 300,
-                    opacity: 0
+                    x: Math.cos(i * 12 * Math.PI / 180) * (200 + Math.random() * 200),
+                    y: Math.sin(i * 12 * Math.PI / 180) * (200 + Math.random() * 200),
+                    opacity: 0,
+                    scale: [1, 2, 0]
                   }}
                   transition={{ 
-                    duration: 0.6,
-                    delay: 0.2,
+                    duration: 0.7,
+                    delay: 0.1,
                     ease: 'easeOut'
                   }}
                 />
               ))}
+              
+              <motion.p
+                className="relative z-10 font-display text-2xl text-primary"
+                initial={{ opacity: 0, scale: 0.5 }}
+                animate={{ opacity: [0, 1, 0], scale: [0.5, 1, 1.5] }}
+                transition={{ duration: 0.8 }}
+              >
+                Traversing Galaxies...
+              </motion.p>
             </div>
           </motion.div>
         ) : (
@@ -169,15 +231,24 @@ const QuestionsPage: React.FC = () => {
             exit={{ opacity: 0, scale: 0.9, rotateY: 90 }}
             transition={{ duration: 0.6, ease: 'easeOut' }}
           >
+            {/* Hint timer bar */}
+            <HintTimerBar 
+              timeElapsed={timeElapsed} 
+              hintDelay={hintDelay} 
+              showHint={showHint} 
+            />
+            
             {/* Question header */}
             <div className="flex items-center justify-between mb-8">
               <motion.div
-                className={`px-4 py-2 rounded-full bg-gradient-to-r ${categoryColors[currentQuestion.category]} text-primary-foreground font-display text-sm uppercase tracking-wider`}
+                className="flex items-center gap-4"
                 initial={{ x: -20, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
                 transition={{ delay: 0.2 }}
               >
-                {currentQuestion.category}
+                <span className="text-muted-foreground font-body">
+                  Question {currentQuestionIndex + 1}/{questions.length}
+                </span>
               </motion.div>
               
               <motion.div
@@ -186,14 +257,93 @@ const QuestionsPage: React.FC = () => {
                 animate={{ x: 0, opacity: 1 }}
                 transition={{ delay: 0.2 }}
               >
-                <span className="text-muted-foreground font-body">
-                  Q{currentQuestionIndex + 1}/{questions.length}
-                </span>
                 <span className="font-display text-primary">
                   {formatTime(timeElapsed)}
                 </span>
               </motion.div>
             </div>
+
+            {/* Available powercards to use */}
+            {availablePowercards.length > 0 && (
+              <motion.div
+                className="mb-6"
+                initial={{ y: -10, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.25 }}
+              >
+                <p className="text-sm text-muted-foreground font-body mb-2">Use a Powercard:</p>
+                <div className="flex flex-wrap gap-2">
+                  {availablePowercards.map((owned) => {
+                    const baseCard = { genre: 'Genre', language: 'Language', country: 'Country', year: 'Year', universe: 'Universe' };
+                    const type = baseCard[owned.powercardId as keyof typeof baseCard] || 'Card';
+                    const isUsing = usingPowercard === owned.id;
+                    
+                    return (
+                      <motion.button
+                        key={owned.id}
+                        onClick={() => handleUsePowercard(owned.id, owned.powercardId)}
+                        disabled={isUsing}
+                        className={`relative px-4 py-2 rounded-lg bg-gradient-to-r from-violet/20 to-accent/20 
+                                   border border-violet/50 text-sm font-display text-foreground
+                                   hover:from-violet/30 hover:to-accent/30 transition-all
+                                   disabled:opacity-50`}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        animate={isUsing ? { 
+                          scale: [1, 1.2, 0],
+                          rotate: [0, 180, 360],
+                          opacity: [1, 1, 0]
+                        } : {}}
+                        transition={isUsing ? { duration: 0.6 } : {}}
+                      >
+                        <Zap className="w-4 h-4 inline mr-1" />
+                        {type}
+                        
+                        {/* Explosion effect when using */}
+                        {isUsing && (
+                          <>
+                            {[...Array(8)].map((_, i) => (
+                              <motion.div
+                                key={i}
+                                className="absolute top-1/2 left-1/2 w-2 h-2 rounded-full bg-accent"
+                                initial={{ x: '-50%', y: '-50%', scale: 0 }}
+                                animate={{
+                                  x: `${-50 + Math.cos(i * 45 * Math.PI / 180) * 100}%`,
+                                  y: `${-50 + Math.sin(i * 45 * Math.PI / 180) * 100}%`,
+                                  scale: [0, 1.5, 0],
+                                  opacity: [1, 0.5, 0],
+                                }}
+                                transition={{ duration: 0.5, ease: 'easeOut' }}
+                              />
+                            ))}
+                          </>
+                        )}
+                      </motion.button>
+                    );
+                  })}
+                </div>
+              </motion.div>
+            )}
+
+            {/* Revealed powercard hints */}
+            <AnimatePresence>
+              {revealedPowercardHints.map((revealed, idx) => (
+                <motion.div
+                  key={idx}
+                  className="cosmic-border p-4 rounded-xl mb-4"
+                  initial={{ opacity: 0, scale: 0.9, x: -20 }}
+                  animate={{ opacity: 1, scale: 1, x: 0 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  transition={{ duration: 0.4 }}
+                >
+                  <div className="flex items-center gap-3">
+                    <Zap className="w-5 h-5 text-accent" />
+                    <span className="font-display text-accent text-sm">{revealed.type}:</span>
+                    <span className="text-foreground font-body">{revealed.hint}</span>
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
 
             {/* Question card */}
             <motion.div
@@ -259,7 +409,7 @@ const QuestionsPage: React.FC = () => {
               })}
             </div>
 
-            {/* Hint section */}
+            {/* Timed hint section */}
             <AnimatePresence>
               {showHint && (
                 <motion.div
