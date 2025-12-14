@@ -6,13 +6,14 @@ import Navigation from '@/components/Navigation';
 import QuestionsPage from '@/components/QuestionsPage';
 import PowercardsPage from '@/components/PowercardsPage';
 import LeaderboardPage from '@/components/LeaderboardPage';
+import QuizCompletePage from '@/components/QuizCompletePage';
 import { GameProvider, useGame } from '@/contexts/GameContext';
 import { Helmet } from 'react-helmet-async';
 
 type Tab = 'questions' | 'powercards' | 'leaderboard';
 
 const GameContent: React.FC = () => {
-  const { isRegistered } = useGame();
+  const { isRegistered, isQuizComplete } = useGame();
   const [showGame, setShowGame] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>('questions');
 
@@ -21,6 +22,10 @@ const GameContent: React.FC = () => {
   };
 
   const renderPage = () => {
+    if (isQuizComplete) {
+      return <QuizCompletePage />;
+    }
+    
     switch (activeTab) {
       case 'questions':
         return <QuestionsPage />;
@@ -59,11 +64,13 @@ const GameContent: React.FC = () => {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.8, delay: 0.3 }}
           >
-            <Navigation activeTab={activeTab} onTabChange={setActiveTab} />
+            {!isQuizComplete && (
+              <Navigation activeTab={activeTab} onTabChange={setActiveTab} />
+            )}
             
             <AnimatePresence mode="wait">
               <motion.div
-                key={activeTab}
+                key={isQuizComplete ? 'complete' : activeTab}
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
