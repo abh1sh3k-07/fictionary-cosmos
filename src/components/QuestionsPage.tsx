@@ -5,6 +5,8 @@ import { Lightbulb, ChevronRight, Check, X, Sparkles, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
 import HintTimerBar from './HintTimerBar';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 
 const QuestionsPage: React.FC = () => {
   const { 
@@ -18,8 +20,9 @@ const QuestionsPage: React.FC = () => {
     setQuizComplete
   } = useGame();
   
-  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
+  const [userAnswer, setUserAnswer] = useState('');
   const [isAnswered, setIsAnswered] = useState(false);
+  const [isCorrect, setIsCorrect] = useState(false);
   const [showHint, setShowHint] = useState(false);
   const [timeElapsed, setTimeElapsed] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -37,8 +40,9 @@ const QuestionsPage: React.FC = () => {
   useEffect(() => {
     setTimeElapsed(0);
     setShowHint(false);
-    setSelectedAnswer(null);
+    setUserAnswer('');
     setIsAnswered(false);
+    setIsCorrect(false);
     setRevealedPowercardHints([]);
   }, [currentQuestionIndex]);
 
@@ -79,16 +83,17 @@ const QuestionsPage: React.FC = () => {
     }, 600);
   };
 
-  const handleAnswerSelect = (index: number) => {
-    if (isAnswered) return;
+  const handleSubmitAnswer = () => {
+    if (isAnswered || !userAnswer.trim()) return;
     
-    setSelectedAnswer(index);
     setIsAnswered(true);
     
-    const isCorrect = index === currentQuestion.correctAnswer;
-    answerQuestion(isCorrect);
+    // Case-insensitive comparison, trim whitespace
+    const correct = userAnswer.trim().toLowerCase() === currentQuestion.answer.toLowerCase();
+    setIsCorrect(correct);
+    answerQuestion(correct);
     
-    if (isCorrect) {
+    if (correct) {
       playCorrectAnswer();
       toast.success(`+${currentQuestion.points} points!`, {
         description: 'Correct answer! Well done, traveler.',
@@ -97,7 +102,7 @@ const QuestionsPage: React.FC = () => {
     } else {
       playWrongAnswer();
       toast.error('Incorrect!', {
-        description: 'The multiverse has other plans...',
+        description: `The answer was: ${currentQuestion.answer}`,
       });
     }
   };
@@ -363,51 +368,59 @@ const QuestionsPage: React.FC = () => {
               </div>
             </motion.div>
 
-            {/* Answer options */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-              {currentQuestion.options.map((option, index) => {
-                const isSelected = selectedAnswer === index;
-                const isCorrect = index === currentQuestion.correctAnswer;
-                const showResult = isAnswered;
-                
-                let bgClass = 'bg-card/50 border-border/50 hover:border-primary/50';
-                if (showResult && isCorrect) {
-                  bgClass = 'bg-emerald-500/20 border-emerald-500';
-                } else if (showResult && isSelected && !isCorrect) {
-                  bgClass = 'bg-destructive/20 border-destructive';
-                } else if (isSelected) {
-                  bgClass = 'bg-primary/20 border-primary';
-                }
-                
-                return (
-                  <motion.button
-                    key={index}
-                    onClick={() => handleAnswerSelect(index)}
-                    disabled={isAnswered}
-                    className={`relative p-6 rounded-xl border-2 text-left transition-all duration-300
-                               font-body text-lg disabled:cursor-not-allowed ${bgClass}`}
-                    initial={{ x: index % 2 === 0 ? -20 : 20, opacity: 0 }}
-                    animate={{ x: 0, opacity: 1 }}
-                    transition={{ delay: 0.4 + index * 0.1 }}
-                    whileHover={!isAnswered ? { scale: 1.02 } : {}}
-                    whileTap={!isAnswered ? { scale: 0.98 } : {}}
+            {/* Answer input */}
+            <motion.div
+              className="mb-8"
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.4 }}
+            >
+              <div className="flex flex-col sm:flex-row gap-4">
+                <Input
+                  type="text"
+                  placeholder="Type your answer..."
+                  value={userAnswer}
+                  onChange={(e) => setUserAnswer(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSubmitAnswer()}
+                  disabled={isAnswered}
+                  className={`flex-1 h-14 text-lg font-body bg-card/50 border-2 transition-all duration-300 ${
+                    isAnswered
+                      ? isCorrect
+                        ? 'border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.3)]'
+                        : 'border-destructive shadow-[0_0_20px_rgba(239,68,68,0.3)]'
+                      : 'border-border/50 focus:border-primary focus:shadow-[0_0_20px_hsl(var(--primary)/0.3)]'
+                  }`}
+                />
+                <Button
+                  onClick={handleSubmitAnswer}
+                  disabled={isAnswered || !userAnswer.trim()}
+                  className="h-14 px-8 font-display uppercase tracking-wider bg-gradient-to-r from-primary to-violet hover:opacity-90 disabled:opacity-50"
+                >
+                  {isAnswered ? (isCorrect ? <Check className="w-5 h-5" /> : <X className="w-5 h-5" />) : 'Submit'}
+                </Button>
+              </div>
+              
+              {/* Feedback message */}
+              <AnimatePresence>
+                {isAnswered && (
+                  <motion.div
+                    className={`mt-4 p-4 rounded-xl text-center font-display ${
+                      isCorrect 
+                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' 
+                        : 'bg-destructive/20 text-destructive border border-destructive/50'
+                    }`}
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
                   >
-                    <span className="flex items-center gap-4">
-                      <span className="w-8 h-8 rounded-full bg-muted flex items-center justify-center font-display text-sm">
-                        {String.fromCharCode(65 + index)}
-                      </span>
-                      <span className="flex-1">{option}</span>
-                      {showResult && isCorrect && (
-                        <Check className="w-6 h-6 text-emerald-500" />
-                      )}
-                      {showResult && isSelected && !isCorrect && (
-                        <X className="w-6 h-6 text-destructive" />
-                      )}
-                    </span>
-                  </motion.button>
-                );
-              })}
-            </div>
+                    {isCorrect 
+                      ? `✨ Correct! +${currentQuestion.points} points` 
+                      : `The answer was: ${currentQuestion.answer}`
+                    }
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
 
             {/* Timed hint section */}
             <AnimatePresence>
