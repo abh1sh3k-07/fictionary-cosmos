@@ -87,38 +87,78 @@ const QuestionsPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen pt-24 pb-12 px-4 md:px-8">
+    <div className="min-h-screen pt-24 pb-12 px-4 md:px-8 relative z-10">
       <AnimatePresence mode="wait">
         {isTransitioning ? (
           <motion.div
             key="portal"
-            className="fixed inset-0 flex items-center justify-center z-40"
+            className="fixed inset-0 flex items-center justify-center z-50 bg-background/80 backdrop-blur-sm"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            {/* Dimension portal effect */}
-            <motion.div
-              className="relative w-64 h-64"
-              animate={{ rotate: 360 }}
-              transition={{ duration: 0.8, ease: 'easeInOut' }}
-            >
+            {/* Galaxy warp transition */}
+            <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
+              {/* Radiating galaxy rings */}
+              {[...Array(5)].map((_, i) => (
+                <motion.div
+                  key={i}
+                  className="absolute rounded-full border-2 border-primary/40"
+                  style={{
+                    width: 100 + i * 80,
+                    height: 100 + i * 80,
+                  }}
+                  initial={{ scale: 0, opacity: 1, rotate: 0 }}
+                  animate={{ 
+                    scale: [0, 2, 3],
+                    opacity: [0.8, 0.4, 0],
+                    rotate: [0, 90, 180]
+                  }}
+                  transition={{ 
+                    duration: 0.8,
+                    delay: i * 0.1,
+                    ease: 'easeOut'
+                  }}
+                />
+              ))}
+              
+              {/* Central galaxy core */}
               <motion.div
-                className="absolute inset-0 rounded-full bg-gradient-to-r from-primary via-violet to-accent"
-                animate={{ scale: [1, 3, 0] }}
+                className="absolute w-32 h-32 rounded-full"
+                style={{
+                  background: 'radial-gradient(circle, hsl(var(--primary)) 0%, hsl(var(--violet)) 50%, transparent 70%)',
+                }}
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ 
+                  scale: [0, 1.5, 0],
+                  opacity: [0, 1, 0]
+                }}
                 transition={{ duration: 0.8 }}
               />
-              <motion.div
-                className="absolute inset-4 rounded-full bg-background"
-                animate={{ scale: [1, 2.5, 0] }}
-                transition={{ duration: 0.8, delay: 0.1 }}
-              />
-              <motion.div
-                className="absolute inset-8 rounded-full bg-gradient-to-r from-accent via-primary to-violet"
-                animate={{ scale: [1, 2, 0] }}
-                transition={{ duration: 0.8, delay: 0.2 }}
-              />
-            </motion.div>
+              
+              {/* Star particles */}
+              {[...Array(20)].map((_, i) => (
+                <motion.div
+                  key={`star-${i}`}
+                  className="absolute w-1 h-1 rounded-full bg-foreground"
+                  style={{
+                    left: '50%',
+                    top: '50%',
+                  }}
+                  initial={{ x: 0, y: 0, opacity: 1 }}
+                  animate={{ 
+                    x: Math.cos(i * 18 * Math.PI / 180) * 300,
+                    y: Math.sin(i * 18 * Math.PI / 180) * 300,
+                    opacity: 0
+                  }}
+                  transition={{ 
+                    duration: 0.6,
+                    delay: 0.2,
+                    ease: 'easeOut'
+                  }}
+                />
+              ))}
+            </div>
           </motion.div>
         ) : (
           <motion.div

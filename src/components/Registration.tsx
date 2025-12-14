@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useGame } from '@/contexts/GameContext';
 import { Sparkles } from 'lucide-react';
 
@@ -21,11 +21,88 @@ const Registration: React.FC<RegistrationProps> = ({ onComplete }) => {
     
     setTimeout(() => {
       onComplete();
-    }, 1500);
+    }, 2000);
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden px-4 z-10">
+      {/* Galaxy warp transition overlay */}
+      <AnimatePresence>
+        {isEntering && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-background"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            {/* Hyperspace stars effect */}
+            {[...Array(100)].map((_, i) => (
+              <motion.div
+                key={i}
+                className="absolute w-0.5 bg-gradient-to-b from-transparent via-foreground to-primary"
+                style={{
+                  left: `${Math.random() * 100}%`,
+                  top: `${Math.random() * 100}%`,
+                  height: 2,
+                }}
+                initial={{ 
+                  scaleY: 1,
+                  opacity: 0,
+                }}
+                animate={{ 
+                  scaleY: [1, 50, 100],
+                  opacity: [0, 1, 0],
+                  y: [0, -200],
+                }}
+                transition={{ 
+                  duration: 1.5,
+                  delay: Math.random() * 0.5,
+                  ease: 'easeIn'
+                }}
+              />
+            ))}
+            
+            {/* Central vortex */}
+            <motion.div
+              className="absolute w-64 h-64 rounded-full"
+              style={{
+                background: 'radial-gradient(circle, hsl(var(--primary) / 0.8) 0%, hsl(var(--violet) / 0.5) 40%, transparent 70%)',
+              }}
+              initial={{ scale: 0, rotate: 0 }}
+              animate={{ scale: [0, 3, 8], rotate: [0, 180, 360] }}
+              transition={{ duration: 1.8, ease: 'easeInOut' }}
+            />
+            
+            {/* Galaxy spiral arms */}
+            {[...Array(4)].map((_, i) => (
+              <motion.div
+                key={`arm-${i}`}
+                className="absolute w-full h-1 bg-gradient-to-r from-transparent via-primary/60 to-transparent"
+                style={{
+                  transformOrigin: 'center',
+                  rotate: `${i * 45}deg`,
+                }}
+                initial={{ scaleX: 0, opacity: 0 }}
+                animate={{ scaleX: [0, 1.5], opacity: [0, 1, 0] }}
+                transition={{ duration: 1.2, delay: 0.3 + i * 0.1 }}
+              />
+            ))}
+            
+            {/* Welcome text */}
+            <motion.div
+              className="absolute text-center z-10"
+              initial={{ opacity: 0, scale: 0.5 }}
+              animate={{ opacity: [0, 1, 0], scale: [0.5, 1, 1.5] }}
+              transition={{ duration: 1.5, delay: 0.3 }}
+            >
+              <p className="font-display text-2xl md:text-4xl text-foreground text-glow-cyan">
+                Entering the Multiverse...
+              </p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Portal effect background */}
       <motion.div
         className="absolute inset-0 flex items-center justify-center pointer-events-none"

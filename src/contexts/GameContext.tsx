@@ -95,12 +95,12 @@ const mockQuestions: Question[] = [
 ];
 
 const mockPowercards: Powercard[] = [
-  { id: 'genre1', name: 'Genre Reveal', type: 'Genre', cost: 300, hint: 'Science Fiction Thriller', unlocked: false },
-  { id: 'lang1', name: 'Language Oracle', type: 'Language', cost: 300, hint: 'Originally in English', unlocked: false },
-  { id: 'country1', name: 'Origin Finder', type: 'Country', cost: 300, hint: 'United States / Japan', unlocked: false },
-  { id: 'year1', name: 'Time Crystal', type: 'Year', cost: 300, hint: 'Released between 2010-2020', unlocked: false },
-  { id: 'universe1', name: 'Universe Key', type: 'Universe', cost: 300, hint: 'Part of a larger franchise', unlocked: false },
-  { id: 'genre2', name: 'Genre Reveal II', type: 'Genre', cost: 300, hint: 'Psychological Horror', unlocked: false },
+  { id: 'genre1', name: 'Genre Reveal', type: 'Genre', cost: 100, hint: 'Science Fiction Thriller', unlocked: false },
+  { id: 'lang1', name: 'Language Oracle', type: 'Language', cost: 100, hint: 'Originally in English', unlocked: false },
+  { id: 'country1', name: 'Origin Finder', type: 'Country', cost: 100, hint: 'United States / Japan', unlocked: false },
+  { id: 'year1', name: 'Time Crystal', type: 'Year', cost: 100, hint: 'Released between 2010-2020', unlocked: false },
+  { id: 'universe1', name: 'Universe Key', type: 'Universe', cost: 100, hint: 'Part of a larger franchise', unlocked: false },
+  { id: 'genre2', name: 'Genre Reveal II', type: 'Genre', cost: 100, hint: 'Psychological Horror', unlocked: false },
 ];
 
 const mockLeaderboard: LeaderboardEntry[] = [
@@ -142,17 +142,18 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const unlockPowercard = (id: string) => {
-    if (!user || user.score < 300) return;
+    const card = powercards.find(c => c.id === id);
+    if (!user || !card || user.score < card.cost) return;
     
-    setUser((prev) => prev ? { ...prev, score: prev.score - 300 } : null);
+    setUser((prev) => prev ? { ...prev, score: prev.score - card.cost } : null);
     setPowercards((prev) =>
-      prev.map((card) => (card.id === id ? { ...card, unlocked: true } : card))
+      prev.map((c) => (c.id === id ? { ...c, unlocked: true } : c))
     );
     
     // Update leaderboard
     setLeaderboard((prev) => {
       const updated = prev.map((entry) =>
-        entry.isCurrentUser ? { ...entry, score: entry.score - 300 } : entry
+        entry.isCurrentUser ? { ...entry, score: entry.score - card.cost } : entry
       );
       return updated.sort((a, b) => b.score - a.score).map((entry, idx) => ({ ...entry, rank: idx + 1 }));
     });
