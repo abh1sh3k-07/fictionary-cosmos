@@ -145,7 +145,7 @@ const Registration: React.FC<RegistrationProps> = ({
         delay: 0.2
       }}>
           <h1 className="font-display text-6xl font-black tracking-wider mb-4 md:text-7xl">
-            <span className="neon-text">FICTIONARY</span>
+            <span className="neon-text text-5xl text-center">FICTIONARY</span>
           </h1>
           <motion.div className="h-1 w-48 mx-auto rounded-full bg-gradient-to-r from-primary via-violet to-accent" initial={{
           scaleX: 0
