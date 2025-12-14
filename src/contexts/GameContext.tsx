@@ -9,8 +9,7 @@ export interface Question {
   id: number;
   category: 'Movies' | 'Anime' | 'Web Series' | 'Fiction Books' | 'Fantasy / Sci-Fi';
   question: string;
-  options: string[];
-  correctAnswer: number;
+  answer: string;
   hint: string;
   points: number;
 }
@@ -100,8 +99,7 @@ const mockQuestions: Question[] = [
     id: 1,
     category: 'Movies',
     question: 'In which film does a group of thieves enter dreams within dreams to plant an idea?',
-    options: ['The Matrix', 'Inception', 'Shutter Island', 'Interstellar'],
-    correctAnswer: 1,
+    answer: 'Inception',
     hint: 'Christopher Nolan directed this 2010 mind-bending thriller starring Leonardo DiCaprio.',
     points: 50,
   },
@@ -109,8 +107,7 @@ const mockQuestions: Question[] = [
     id: 2,
     category: 'Anime',
     question: 'What is the name of the notebook that kills anyone whose name is written in it?',
-    options: ['Soul Note', 'Death Note', 'Dark Diary', 'Reaper\'s Journal'],
-    correctAnswer: 1,
+    answer: 'Death Note',
     hint: 'This anime features a battle of wits between a genius student and a detective known only as "L".',
     points: 50,
   },
@@ -118,8 +115,7 @@ const mockQuestions: Question[] = [
     id: 3,
     category: 'Web Series',
     question: 'In "Stranger Things", what is the parallel dimension called?',
-    options: ['The Shadow Realm', 'The Upside Down', 'The Void', 'The Dark World'],
-    correctAnswer: 1,
+    answer: 'The Upside Down',
     hint: 'This Netflix series is set in the 1980s and features a girl with psychic powers named Eleven.',
     points: 50,
   },
@@ -127,8 +123,7 @@ const mockQuestions: Question[] = [
     id: 4,
     category: 'Fiction Books',
     question: 'Who wrote "The Hitchhiker\'s Guide to the Galaxy"?',
-    options: ['Terry Pratchett', 'Neil Gaiman', 'Douglas Adams', 'Isaac Asimov'],
-    correctAnswer: 2,
+    answer: 'Douglas Adams',
     hint: 'The answer to life, the universe, and everything is 42.',
     points: 50,
   },
@@ -136,8 +131,7 @@ const mockQuestions: Question[] = [
     id: 5,
     category: 'Fantasy / Sci-Fi',
     question: 'In the Dune universe, what is the most valuable substance in the cosmos?',
-    options: ['Vibranium', 'Dilithium', 'Melange (Spice)', 'Adamantium'],
-    correctAnswer: 2,
+    answer: 'Melange',
     hint: 'This substance is found only on the desert planet Arrakis and extends life.',
     points: 50,
   },
