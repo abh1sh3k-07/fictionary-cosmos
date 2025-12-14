@@ -83,7 +83,7 @@ const PowercardsPage: React.FC = () => {
           <h1 className="font-display text-4xl md:text-5xl font-bold mb-4">
             <span className="neon-text text-violet-50">Powercards</span>
           </h1>
-          <p className="font-body text-lg max-w-2xl mx-auto text-foreground">
+          <p className="font-body text-lg max-w-2xl mx-auto bg-inherit text-violet-50">
             Buy cosmic hint cards to use on any question. Each card reveals specific information to help you answer.
           </p>
           <div className="mt-4 flex items-center justify-center gap-2 text-primary">
